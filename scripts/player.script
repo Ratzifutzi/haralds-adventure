@@ -1,0 +1,148 @@
+function init(self)	
+	msg.post(".", "acquire_input_focus")
+
+	self.spawnPoint = go.get_position("#spawn")
+	self.objectiveSpawn = go.get_position("/objective")
+	
+	global_stats["alive"] = true
+	global_stats["carrying_crate"] = false
+	
+	spawnPlayer(self)
+end
+
+function spawnPlayer(self)
+	go.set_position(self.spawnPoint)
+	go.animate(".", hash("scale"), go.PLAYBACK_ONCE_BACKWARD, vmath.vector3(0, 0, 0), go.EASING_INELASTIC, 5)
+
+	timer.delay(2, false, function() 
+		msg.post("/objective#trigger", "enable")
+	end)
+
+	msg.post(".", "enable")
+end
+
+function update(self, dt)
+	--msg.post("@render:", "draw_debug_text", { text = json.encode(global_stats), position = vmath.vector3(0, 20 , 0), color = vmath.vector4(0, 1, 0, 1) })
+	
+	if global_stats.carrying_crate == true then
+		local currentPos = go.get_position(".")
+		local crate = go.set_position( vmath.vector3( currentPos.x, currentPos.y - 13, currentPos.z ) , "/objective" )
+	end
+end
+
+function on_message(self, message_id, message, sender)
+	if message_id == hash("collision_response") then
+
+		print("collided with", message.group)
+
+		-- Kill Player
+		if message.group == hash("ground") and global_stats.alive then
+			global_stats.alive = false
+
+			sprite.play_flipbook("/exit#sprite", hash("exit_closed"))
+			
+			msg.post(".", "disable")
+			
+			sound.play("#die_sound")
+
+			global_stats.lifes =  global_stats.lifes - 1
+
+			if global_difficulty == "play_casual" then
+				global_stats.lifes = global_stats.lifes + 1
+			end
+			
+			msg.post("main:/overlay", "set_lifes", { ["lifes"] = global_stats.lifes} )
+			global_stats.carrying_crate = false
+
+			--go.set_position( self.objectiveSpawn, "/objective" )
+
+			go.animate("/objective", hash("position"), go.PLAYBACK_ONCE_FORWARD, self.objectiveSpawn, go.EASING_LINEAR, 1)
+			msg.post("/objective#map_collision", "disable")
+			
+			timer.delay(1, false, function()
+				if global_stats.lifes == 0 then
+					msg.post("main:/loader", "next_level", {})
+				end
+				
+				global_stats.carrying_crate = false
+				global_stats.alive = true
+				sprite.play_flipbook("/exit#sprite", hash("exit_closed"))
+
+				msg.post("/objective#map_collision", "enable")
+
+				spawnPlayer(self)
+			end)
+			
+		end
+
+		-- Get Objective
+		if message.group == hash("objective") and global_stats.carrying_crate == false and global_stats.alive then
+			global_stats.carrying_crate = true
+
+			sprite.play_flipbook("/exit#sprite", hash("exit_open"))
+
+			go.animate("/exit#sprite", hash("scale"), go.PLAYBACK_ONCE_BACKWARD, vmath.vector3(1.35, 1.35, 1), go.EASING_INOUTQUART, 1.5)
+			
+			msg.post("/objective#trigger", "disable")
+
+			sound.play("main:/loader#pickup_sound")
+		end
+
+		-- exit
+		if message.group == hash("exit") and global_stats.alive and global_stats.carrying_crate then
+			global_stats.alive = false
+			
+			msg.post(".", "disable")
+			msg.post("/objective", "disable")
+
+			sprite.play_flipbook("/exit#sprite", hash("exit_closed"))
+
+			sound.play("#won_sound")
+
+			go.animate("/exit#sprite", hash("scale"), go.PLAYBACK_ONCE_BACKWARD, vmath.vector3(1.25, 1.25, 1), go.EASING_INOUTQUART, 0.5)
+
+			timer.delay(1.5, false, function (self)
+				msg.post("main:/loader", "next_level", {})
+			end)
+		end	
+
+		-- Vent
+		if message.group == hash("boost_vent") and global_stats.carrying_crate == false and global_stats.alive then
+			msg.post(".", "apply_force", {force = vmath.vector3( global_stats.vent_power , 0, 0), position = go.get_world_position()})
+
+			sound.play("#vent")
+		end
+	end
+end
+
+function on_input(self, action_id, action)
+	if action_id == hash("move_drag") or action_id == hash("finger_drag") then
+		print("Drag")
+		local max_drag = 30
+
+		action.screen_dx = action.screen_dx * 10
+		action.screen_dy = action.screen_dy * 10
+
+		if action.screen_dx > max_drag then action.screen_dx = max_drag end
+		if action.screen_dx < - max_drag then action.screen_dx = - max_drag end
+		
+		if action.screen_dy > max_drag then action.screen_dy = max_drag end
+		if action.screen_dy < 0 then action.screen_dy = 0 end
+
+		msg.post(".", "apply_force", {force = vmath.vector3(action.screen_dx, action.screen_dy, 0), position = go.get_world_position()})
+		-- msg.post("@render:", "draw_debug_text", { text = json.encode( press ), position = vmath.vector3(0, 40 , 0), color = vmath.vector4(0, 1, 0, 1) })
+	end
+	
+	if action_id == hash("move_up") and action.released == false then
+		msg.post(".", "apply_force", {force = vmath.vector3(0, 30, 0), position = go.get_world_position()})
+	elseif action_id == hash("move_left") and action.released == false then
+		msg.post(".", "apply_force", {force = vmath.vector3(-30, 0, 0), position = go.get_world_position()})
+	elseif action_id == hash("move_right") and action.released == false then
+		msg.post(".", "apply_force", {force = vmath.vector3(30, 0, 0), position = go.get_world_position()})
+	elseif action_id == hash("hack_crate") and action.released == true and global_difficulty ~= "play_insane" then
+		go.set_position( go.get_position("level:/spawn"), "level:/objective" )
+	elseif action_id == hash("hack_skip") and action.released == true and global_difficulty ~= "play_insane" then
+		go.set_position( go.get_position("."), "level:/objective" )
+		go.set_position( go.get_position("/exit"), "." )
+	end
+end

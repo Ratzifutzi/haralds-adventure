@@ -1,0 +1,94 @@
+function init(self)
+	-- Setup global vars
+	global_difficulty = "waiting"
+	
+	msg.post(".", "acquire_input_focus")
+
+	-- Title Animation
+	gui.animate(gui.get_node("title"), hash("scale"), vmath.vector3(0.11, 0.11, 0.11), gui.EASING_INOUTSINE, 3)
+	
+	timer.delay(3, true, function()
+		gui.animate(gui.get_node("title"), hash("scale"), vmath.vector3(0.1, 0.1, 0.1), gui.EASING_INOUTSINE, 3)
+	end)
+
+	timer.delay(6, true, function()
+		gui.animate(gui.get_node("title"), hash("scale"), vmath.vector3(0.11, 0.11, 0.11), gui.EASING_INOUTSINE, 3)
+	end)
+
+	gui.set_text( gui.get_node( "version" ) , sys.get_config("project.title") .. " V" .. sys.get_config("project.version") .. "\nDeveloper: ".. sys.get_config("project.developer") )
+
+	defos.set_cursor_visible(true)
+end
+
+function final(self)
+	-- Add finalization code here
+	-- Learn more: https://defold.com/manuals/script/
+	-- Remove this function if not needed
+end
+
+function update(self, dt)
+	
+end
+
+function on_message(self, message_id, message, sender)
+	-- Add message-handling code here
+	-- Learn more: https://defold.com/manuals/message-passing/
+	-- Remove this function if not needed
+end
+
+function start_game( mode )
+	msg.post("main:/loader#loader", "load_level", { ["level"] = "1", ["mode"] = mode })
+end
+
+function on_input(self, action_id, action)
+	local buttons = {"play_casual", "play_normal", "play_insane"}
+
+	if action_id == hash("move_drag") and action.pressed then
+		for k, v in pairs(buttons) do
+			if gui.pick_node(  gui.get_node( v ) , action.x, action.y) then
+				gui.animate( gui.get_node( v ) , hash("size"), vmath.vector3(60, 14, 1), gui.EASING_OUTBACK, 0.1)
+
+				timer.delay(0.1, false, function()
+					start_game( v )
+
+					msg.post(".", "disable")
+					msg.post("main:/overlay", "enable")
+
+					defos.set_cursor_visible(false)
+				end)	
+			end
+		end
+	end
+	
+	if not action_id then
+		for k, v in pairs(buttons) do
+			if gui.pick_node(  gui.get_node( v ) , action.x, action.y) then
+				gui.animate( gui.get_node( v ) , hash("size"), vmath.vector3(80, 16, 1), gui.EASING_OUTBACK, 0.1)
+			else
+				gui.animate( gui.get_node( v ) , hash("size"), vmath.vector3(60, 16, 1), gui.EASING_OUTBACK, 0.1)
+			end
+		end
+
+		if gui.pick_node( gui.get_node("exit") , action.x, action.y) then
+			gui.play_flipbook( gui.get_node("exit") , "exit_open")
+		else
+			gui.play_flipbook( gui.get_node("exit") , "exit_closed")
+		end
+	end
+	
+	-- Add input-handling code here. The game object this script is attached to
+	-- must have acquired input focus:
+	--
+	--    msg.post(".", "acquire_input_focus")
+	--
+	-- All mapped input bindings will be received. Mouse and touch input will
+	-- be received regardless of where on the screen it happened.
+	-- Learn more: https://defold.com/manuals/input/
+	-- Remove this function if not needed
+end
+
+function on_reload(self)
+	-- Add reload-handling code here
+	-- Learn more: https://defold.com/manuals/hot-reload/
+	-- Remove this function if not needed
+end

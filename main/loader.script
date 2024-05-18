@@ -1,0 +1,197 @@
+local MainMenuEnabled = true
+local DebugLoaderArgs = { ["level"] = "6", ["mode"] = "play_normal" }
+
+function init(self)
+	self.difficultyStatPresets = {
+		["play_normal"] = {
+			["lifes"] = 5,
+			["spinner_multi"] = 1,
+			["vent_multi"] = 1
+		},
+		["play_casual"] = {
+			["lifes"] = 5,
+			["spinner_multi"] = 0.75,
+			["vent_multi"] = 1
+		},
+		["play_insane"] = {
+			["lifes"] = 1,
+			["spinner_multi"] = 1.5,
+			["vent_multi"] = 1
+		},
+	}
+	
+	defos.toggle_fullscreen()
+	
+	msg.post(".", "acquire_input_focus")
+
+	msg.post("@render:", "use_fixed_fit_projection", { near = -1, far = 1 } )
+
+	msg.post("/ending", "disable")
+
+	global_level = 0
+	global_stats = {
+		["lifes"] = 5,
+		["carrying_crate"] = false,
+		["alive"] = true,
+		["spinner_speed"] = 50,
+		["vent_power"] = 400
+	}
+
+	sound.play("#music")
+
+	if MainMenuEnabled then
+		msg.post("/overlay", "disable")
+	else
+		msg.post("#loader", "load_level", DebugLoaderArgs )
+		msg.post("/main_menu", "disable")
+	end
+	
+	self.specialSettings = {
+		[1] = {},
+		[2] = {},
+		[3] = {
+			["spinner_speed"] = 50
+		},
+		[4] = {
+			["spinner_speed"] = 30,
+			["vent_power"] = 400,
+		},
+		[5] = {
+			["spinner_speed"] = 25,
+			["vent_power"] = 100,
+		},
+		[6] = {
+			["spinner_speed"] = 25,
+			["vent_power"] = 400,
+		}
+	}
+
+	print("Initiated")
+end
+
+function final(self)
+	-- Add finalization code here
+	-- Learn more: https://defold.com/manuals/script/
+	-- Remove this function if not needed
+end
+
+function update(self, dt)
+	-- Add update code here
+	-- Learn more: https://defold.com/manuals/script/
+	-- Remove this function if not needed
+end
+
+function on_message(self, message_id, message, sender)
+	if message_id == hash("load_level") then
+		if message.mode then
+			global_difficulty = message.mode
+
+			for i, v in pairs( self.difficultyStatPresets[ global_difficulty ] ) do
+				global_stats[i] = v
+
+				print( "set", i, "to", v )
+			end
+		end
+
+
+		-- Ending
+		if self.specialSettings[ tonumber( message.level ) ] == nil then
+			msg.post("/overlay", "disable")
+			msg.post("/ending", "enable")
+			msg.post("/ending", "set_mode", {["mode"] = global_difficulty})
+
+			global_difficulty = "ending"
+
+			return
+		end
+		
+		msg.post("/loader#level" .. message["level"], "load")
+
+		global_level = tonumber( message["level"] )
+		
+		--msg.post("level:#generator", "init")
+		
+		print("Loading Level", "/loader#level" .. message["level"])
+
+		for i, v in pairs( self.specialSettings[ tonumber( message.level ) ] ) do
+			global_stats[i] = v
+
+			print( "set", i, "to", v )
+		end
+
+		global_stats.spinner_speed = global_stats.spinner_speed * global_stats.spinner_multi
+	end
+
+	if message_id == hash("next_level") then
+		msg.post("/loader#level" .. tostring(global_level), "unload")
+
+		print("Unloading level...")
+	end
+
+	if message_id == hash("proxy_loaded") then
+		-- msg.post(sender, "init")
+
+		msg.post(sender, "enable")
+
+		print("Loaded!")
+	end
+
+	if message_id == hash("proxy_unloaded") then
+		print("Unloaded!")
+
+		if global_stats.lifes == 0 then
+			global_level = global_level - 1
+
+			if global_difficulty == "play_insane" then
+				global_level = 0
+			end
+
+			if global_level < 1 then
+				global_level = 1
+			end
+			
+			-- msg.post("/loader#level" .. tostring(global_level), "load")
+			msg.post(".", "load_level", { ["level"] = global_level })
+
+			for i, v in pairs( self.difficultyStatPresets[ global_difficulty ] ) do
+				global_stats[i] = v
+
+				print( "set", i, "to", v )
+			end
+
+			return
+		end
+
+		global_level = global_level + 1
+
+		--msg.post("/loader#level" .. tostring(global_level), "load")
+		msg.post(".", "load_level", { ["level"] = global_level })
+	end
+end
+
+function on_input(self, action_id, action)
+	if action_id == hash("graphics_fit") and action.released == true then
+		msg.post("@render:", "use_fixed_fit_projection", { near = -1, far = 1 })
+	end
+
+	if action_id == hash("graphics_stretch") and action.released == true then
+		msg.post("@render:", "use_stretch_projection", { near = -1, far = 1 })
+	end
+
+	if action_id == hash("spinner_faster") and action.released == true then
+		global_stats.spinner_speed = global_stats.spinner_speed + 10
+	end
+
+	if action_id == hash("back_to_menu") and action.released == true and global_difficulty == "ending" then
+		msg.post("/ending", "disable")
+		msg.post("/main_menu", "enable")
+
+		defos.set_cursor_visible(true)
+	end
+end
+
+function on_reload(self)
+	-- Add reload-handling code here
+	-- Learn more: https://defold.com/manuals/hot-reload/
+	-- Remove this function if not needed
+end

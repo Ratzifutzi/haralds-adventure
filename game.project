@@ -1,0 +1,45 @@
+[bootstrap]
+main_collection = /main/main.collectionc
+
+[script]
+shared_state = 1
+
+[display]
+width = 320
+height = 160
+fullscreen = 0
+
+[android]
+input_method = HiddenInputField
+
+[project]
+title = Harald's Adventure
+publisher = Ratzifutzi
+developer = Ratzifutzi
+version = 1.1
+dependencies#0 = https://github.com/subsoap/defos/archive/master.zip
+
+[sprite]
+subpixels = 0
+
+[label]
+subpixels = 0
+
+[graphics]
+default_texture_min_filter = nearest
+default_texture_mag_filter = nearest
+
+[physics]
+debug = 0
+debug_alpha = 0.5
+
+[html5]
+scale_mode = fit
+show_made_with_defold = 0
+show_console_banner = 0
+cssfile = /builtins/manifests/web/dark_theme.css
+splash_image = /assets/cover.png
+
+[sound]
+use_thread = 1
+

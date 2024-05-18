@@ -1,0 +1,57 @@
+local Hearts = {
+	[5] = "heart_full",
+	[4] = "heart_normal",
+	[3] = "heart_normal",
+	[2] = "heart_normal",
+	[1] = "heart_critic",
+	[1] = "heart_critic",
+	[0] = "heart_gone"
+}
+
+function init(self)
+	-- Add initialization code here
+	-- Learn more: https://defold.com/manuals/script/
+	-- Remove this function if not needed
+end
+
+function final(self)
+	-- Add finalization code here
+	-- Learn more: https://defold.com/manuals/script/
+	-- Remove this function if not needed
+end
+
+function update(self, dt)
+	local levelText = gui.get_node("level")
+	local lifesText = gui.get_node("lifes")
+	local heartNode = gui.get_node("heart")
+
+	gui.set_text(levelText, global_level)
+	gui.set_text(lifesText, global_stats.lifes)
+	gui.play_flipbook(heartNode, Hearts[global_stats.lifes])
+
+	if global_difficulty == "play_casual" then
+		gui.play_flipbook(heartNode, "heart_invincible")
+	end
+end
+
+function on_message(self, message_id, message, sender)
+	
+end
+
+function on_input(self, action_id, action)
+	-- Add input-handling code here. The game object this script is attached to
+	-- must have acquired input focus:
+	--
+	--    msg.post(".", "acquire_input_focus")
+	--
+	-- All mapped input bindings will be received. Mouse and touch input will
+	-- be received regardless of where on the screen it happened.
+	-- Learn more: https://defold.com/manuals/input/
+	-- Remove this function if not needed
+end
+
+function on_reload(self)
+	-- Add reload-handling code here
+	-- Learn more: https://defold.com/manuals/hot-reload/
+	-- Remove this function if not needed
+end
